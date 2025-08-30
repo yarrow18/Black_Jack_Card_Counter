@@ -101,8 +101,8 @@ SLOPE = {
 }
 ACE_PENALTY = 0.90  # penalty if no Ace side-count (ΩII / Hi-Opt II)
 
-INS_THRESH_HILO = +3  # seuil TC floor pour assurance (fallback simple)
-MIN_DECKS_DEN = 0.25  # min 1/4 de sabot pour stabiliser le TC près de la coupe
+INS_THRESH_HILO = +3  # TC floor threshold for insurance (simple fallback)
+MIN_DECKS_DEN = 0.25  # min 1/4 shoe to stabilize TC near the cut
 
 # --- Illustrious 18 + Fab 4 display (not used by logic, kept) ---
 I18_F4 = [
@@ -249,7 +249,7 @@ def slope_for(system,decks,side_ace_used):
         m *= ACE_PENALTY
     return round(m,2)
 
-# --------- Jeu dealer ---------
+# --------- Dealer play ---------
 def dealer_play(cards, counts, rules, rnd):
     while True:
         tot, soft = hand_total(cards)
@@ -298,11 +298,11 @@ def resolve_vs_dealer_stand(p, up, dealer_hole, counts, rules, rnd):
     if tot < dealer_total: return -1.0
     return 0.0
 
-# --------- Joueur ---------
+# --------- Player ---------
 def play_hand(p, up, dealer_hole, counts, rules, rnd, tc_floor, apply_idx, split_depth=0, can_double=True, can_split=True):
     first_two = (len(p) == 2)
     tot, soft = hand_total(p)
-    # Indices d'abord (peuvent recommander Stand/Double ou Surrender)
+    # Index first (may recommend Stand/Double or Surrender)
     override = apply_indices_override(tot, soft, up, first_two, can_double, tc_floor, rules) if apply_idx else None
     if rules["LS"] and first_two and override == 'SUR' and not (p[0] == '8' and p[1] == '8'):
         return -0.5
@@ -318,7 +318,7 @@ def play_hand(p, up, dealer_hole, counts, rules, rnd, tc_floor, apply_idx, split
                 for _ in range(2):
                     hand=['A', draw_one(counts,rnd)]
                     if not rules["HSA"]:
-                        # Si double autorisé sur As split mais pas de hit : 1 carte puis stand, comptée comme "double".
+                        # If doubling allowed on split Aces but no hit: 1 card then stand, counted as a 'double'.
                         if rules["DOUBLE_ON_SPLIT_ACES"]:
                             ev += resolve_vs_dealer(hand, up, dealer_hole, counts, rules, rnd, doubled=True)
                         else:
@@ -338,9 +338,9 @@ def play_hand(p, up, dealer_hole, counts, rules, rnd, tc_floor, apply_idx, split
                                   can_double=rules["DAS"],
                                   can_split=True)
                 return ev
-    # (recalcul léger si la main a changé)
+    # (light recompute if the hand changed)
     tot, soft = hand_total(p)
-    # Surrender de base – uniquement si aucun index n'a imposé Stand/Double, et pas 8,8
+    # Base surrender – only if no index forced Stand/Double, and not 8,8
     if override is None and rules["LS"] and first_two and not soft and not (p[0] == '8' and p[1] == '8'):
         if (tot == 16 and up in ('9', 'T', 'J', 'Q', 'K', 'A')) or (tot == 15 and up == 'T'):
             return -0.5
@@ -377,7 +377,7 @@ def play_hand_forced_first(p, up, dealer_hole, counts, rules, rnd, tc_floor, app
                 for _ in range(2):
                     hand=['A', draw_one(counts,rnd)]
                     if not rules["HSA"]:
-                        # Si double autorisé sur As split mais pas de hit : 1 carte puis stand, comptée comme "double".
+                        # If doubling allowed on split Aces but no hit: 1 card then stand, counted as a 'double'.
                         if rules["DOUBLE_ON_SPLIT_ACES"]:
                             ev += resolve_vs_dealer(hand, up, dealer_hole, counts, rules, rnd, doubled=True)
                         else:
@@ -509,7 +509,7 @@ class ProApp:
         # Scrollable container
         scroller = VerticalScrolledFrame(root)
         scroller.pack(fill="both", expand=True)
-        self.page = scroller.interior  # parent pour tout le contenu
+        self.page = scroller.interior  # parent for all content
 
         # State
         self.decks_var = tk.IntVar(value=6)
@@ -528,7 +528,7 @@ class ProApp:
         self.ls_var  = tk.BooleanVar(value=True)
         self.asc_var = tk.BooleanVar(value=False)
 
-        # Indexs / simu / EOR
+        # Indexes / sim / EOR
         self.apply_idx_var = tk.BooleanVar(value=True)
         self.hands_var = tk.IntVar(value=20000)
         self.hands_eor_var = tk.IntVar(value=12000)
@@ -761,7 +761,7 @@ class ProApp:
         if denom<=0: return None
         tens = rem['T']+rem['J']+rem['Q']+rem['K']
         p = tens/denom
-        # ROI de l’assurance (2:1) : EV = 2p - 1  → en %
+        # Insurance ROI (2:1): EV = 2p - 1 → in %
         return (2.0*p - 1.0)*100.0
 
     
@@ -785,7 +785,7 @@ class ProApp:
             getattr(self, "eor_base_ev", None) is not None):
             cur = self.remaining_counts()
             ref = self.eor_ref_counts
-            # eor_vec[r] : ΔEV (en points %) quand on RETIRE 1 carte r du sabot de référence
+            # eor_vec[r]: ΔEV (percentage points) when REMOVING 1 card r from the reference shoe
             eor_delta = sum(self.eor_vec.get(r, 0.0) * (ref.get(r, 0) - cur.get(r, 0)) for r in CARD_ORDER)
 
         # Main table
@@ -903,7 +903,7 @@ class ProApp:
             elif override == 'SUR': action = 'Surrender'
             else: action = {'H':'Hit','S':'Stand','D':'Double'}.get(soft_action(tot, up, rules, True) if soft else hard_action(tot, up, rules, True), 'Hit')
 
-        # Surrender de base si aucun index ne force une autre action (et pas 8,8)
+        # Base surrender if no index forces another action (and not 8,8)
         first_two = (len(ranks) == 2)
         if action in ('Hit','Stand','Double') and self.ls_var.get() and first_two and not soft and not (ranks[0]=='8' and ranks[1]=='8'):
             if (tot == 16 and up in ('9','T','J','Q','K','A')) or (tot == 15 and up == 'T'):
