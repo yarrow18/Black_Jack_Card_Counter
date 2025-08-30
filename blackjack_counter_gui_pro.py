@@ -197,10 +197,10 @@ def hard_action(t, up, rules, can_double):
         return 'S'
     if t == 12 and up in ('4', '5', '6'):
         return 'S'
-    # 11: double vs 2–10 uniquement (vs As -> Hit sauf index +1)
+    # 11: double vs 2–10 only (vs As -> Hit except index +1)
     if t == 11 and can_dbl(11) and up != 'A':
         return 'D'
-    # 10: double vs 2–9 uniquement (vs 10/As -> Hit sauf index)
+    # 10: double vs 2–9 only (vs 10/As -> Hit except index)
     if t == 10 and can_dbl(10) and up_to_val(up) <= 9:
         return 'D'
     if t == 9 and can_dbl(9) and up in UP_3456:
@@ -792,7 +792,7 @@ class ProApp:
         for name, sys_map in SYSTEMS:
             rc, tc_float, tc_floor, tc_trunc = self.tc_values(name, sys_map)
             slope = slope_for(name, self.decks_var.get(), side_ace_used=(self.asc_var.get() if name in ("Omega II","Hi-Opt II") else True))
-            # Count-based EV + correction compositionnelle (EOR)
+            # Count-based EV + composition-based correction (EOR)
             ev = base_edge + slope * tc_floor + eor_delta
             self.tree.item(self.rows[name], values=(
                 name, f"{rc:+d}", f"{tc_trunc:+d}", f"{tc_floor:+d}", f"{tc_float:+.2f}", f"{ev:+.2f}", ins_text
